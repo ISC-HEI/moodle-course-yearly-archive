@@ -41,129 +41,24 @@ function nextYear($timestamp)
   return $date->getTimestamp();
 }
 
-function shortYears($timestampStart, $timestampEnd) 
+function shortYears()
 {
-  $start = new DateTime();
-  $start->setTimestamp($timestampStart);
-  
-  $startYear = intval($start->format('y'));
-  $startMonth = intval($start->format('n'));
+  $date = new DateTime('now');
+  $dateNext = new DateTime('now');
+  $dateNext->modify('+1 year');
 
-  if ($startMonth < 9) 
-  { // janvier -> août = prec - actu
-    $schoolYearStart = $startYear - 1;
-  }
-  else 
-  { // septembre -> décembre = actu - proc
-    $schoolYearStart = $startYear;
-  }
+  $year = $date->format('y');
+  $nextYear = $dateNext->format('y');
 
-  if ($timestampEnd > 0) 
-  {
-    $end = new DateTime();
-    $end->setTimestamp($timestampEnd);
-    $endYear = intval($end->format('y'));
-    $endMonth = intval($end->format('n'));
-
-    if ($endMonth >= 9)
-    {
-      $schoolYearEnd = $endYear + 1;
-    }
-    else
-    {
-      $schoolYearEnd = $endYear;
-    }
-  }
-  else
-  {
-    $schoolYearEnd = $schoolYearStart + 1;
-  }
-
-  // Siècles
-  //$schoolYearStart = printf('%02d', $schoolYearStart % 100);
-  //$schoolYearEnd = printf('%02d', $schoolYearEnd % 100);
-
-  return "{$schoolYearStart}-{$schoolYearEnd} / ";
-}
-
-function parseDate(string $dateString) 
-{
-  $date = DateTime::createFromFormat("!d.m.Y", $dateString);
-  return $date ? $date->getTimestamp() : time();
+  return "{$year}-{$nextYear} / ";
 }
 
 /* -- Cli -- */
 
-$choice = "";
+$datePrefix = shortYears();
 
-while ($choice != "1" && $choice != "2")
-{
-  $choice_tmp = readline("Voulez vous update tous les cours de la liste (1) ou un seul (2) ? [1 par défaut] : ");
-  $choice = $choice_tmp != "" ? $choice_tmp : "1";
-}
-
-if ($choice == "2")
-{
-  /* -- Inputs -- */
-  $courseId = readline("Id du cours : ");
-  // $newFullName = readline("Nouveau nom du cours (fullname) : ");
-  // $newShortName = readline("Nouveau shortname du cours : ");
-  // $startDateInput = readline("Date de début (DD.MM.YYYY) : ");
-  // $endDateInput = readline("Date de fin (DD.MM.YYYY) : ");
-
-
-  // $startDate = parseDate($startDateInput);
-  // $endDate = parseDate($endDateInput);
-
-  /* -- Lookup -- */
-  $course = $DB->get_record('course', ['id' => $courseId], '*', MUST_EXIST);
-
-  echo "Copie de {$course->fullname}...\n";
-
-
-  /* -- Move original course -- */
-  $baseCategoryId = $course->category;
-  $baseFullname = $course->fullname;
-  $baseShortname = $course->shortname;
-  $course->category = $archiveCategoryId;
-  $course->fullname = shortYears($course->startdate, $course->enddate) . $course->fullname;
-  $course->shortname = shortYears($course->startdate, $course->enddate) . $course->shortname;
-  update_course($course);
-  echo "Cours déplacé dans la catégorie 'Archive'\n";
-
-  /* -- Copy -- */
-  $formData = new stdClass;
-  $formData->courseid = $course->id;
-  $formData->fullname = $baseFullname;
-  $formData->shortname = $baseShortname;
-  $formData->category = $baseCategoryId;
-  $formData->visible = 1;
-  $formData->startdate = nextYear($course->startdate);
-  $formData->enddate = nextYear($course->enddate);
-  $formData->idnumber = '';
-  $formData->userdata = 0;
-  $formData->role_1 = 1;
-  $formData->role_3 = 3;
-  $formData->role_5 = 0;
-
-  $copyData = copy_helper::process_formdata($formData);
-  $copyids = copy_helper::create_copy($copyData);
-
-  // $course = $DB->get_record('course', ['shortname' => $baseShortname . "_1"]);
-  // $course->fullname = $baseFullname;
-  // $course->shortname = $baseShortname;
-
-  // update_course($course);
-
-  echo "Cours créé avec succès.\n";
-  exit();
-}
-
-$file = fopen("course_ids.txt", "r");
-$content = fread($file, filesize("course_ids.txt"));
-fclose($file);
-
-$ids = explode(",", $content);
+unset($argv[0]);
+$ids = $argv;
 
 foreach ($ids as $id)
 {
@@ -176,8 +71,8 @@ foreach ($ids as $id)
   $baseFullname = $course->fullname;
   $baseShortname = $course->shortname;
   $course->category = $archiveCategoryId;
-  $course->fullname = shortYears($course->startdate, $course->enddate) . $course->fullname;
-  $course->shortname = shortYears($course->startdate, $course->enddate) . $course->shortname;
+  $course->fullname = $datePrefix . $course->fullname;
+  $course->shortname = $datePrefix . $course->shortname;
   update_course($course);
   echo "Cours déplacé dans la catégorie 'Archive'\n";
  
@@ -189,7 +84,7 @@ foreach ($ids as $id)
   $formData->category = $baseCategoryId;
   $formData->visible = 1;
   $formData->startdate = nextYear($course->startdate);
-  $formData->enddate = nextYear($course->enddate);
+  $formData->enddate = $course->enddate != 0 ? nextYear($course->enddate) : 0;
   $formData->idnumber = '';
   $formData->userdata = 0;
   $formData->role_1 = 1;
