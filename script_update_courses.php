@@ -45,7 +45,7 @@ function shortYears()
 {
   $date = new DateTime('now');
   $dateNext = new DateTime('now');
-  $dateNext->modify('+1 year');
+  $date->modify('-1 year');
 
   $year = $date->format('y');
   $nextYear = $dateNext->format('y');
