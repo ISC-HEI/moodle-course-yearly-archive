@@ -21,3 +21,9 @@ Must be run by user `www-data` as in
 ```bash
 sudo -u www-data php script_get_courses.php
 ```
+
+or 
+
+```bash
+sudo -u www-data php script_update_courses.php 81 82 84 51
+```
